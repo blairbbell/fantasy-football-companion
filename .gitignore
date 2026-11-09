@@ -1,0 +1,31 @@
+# Secrets - never commit
+.env
+.env.*
+!.env.example
+espn_cookies.json
+*cookies*.json
+!espn_cookies.example.json
+config.json
+leagues.json
+*.pem
+*.key
+id_*
+
+# Local data, reports, logs
+data/
+logs/
+reports/
+*.log
+LAST_STATUS
+*.lock
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+.DS_Store

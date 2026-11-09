@@ -1,0 +1,18 @@
+{
+  "season": 2026,
+  "leagues": [
+    {"league_id": 123456, "team_id": 1, "name": "League A"},
+    {"league_id": 654321, "team_id": 4, "name": "League B"}
+  ],
+  "data_dir": "data",
+  "cookies_file": "espn_cookies.json",
+  "doubtful_factor": 0.5,
+  "waivers": {
+    "free_agents_considered": 40,
+    "drop_candidates": 7,
+    "max_recommendations": 3,
+    "injury_ros_factor": {"OUT": 0.7, "INJURY_RESERVE": 0.4, "SUSPENSION": 0.4, "DOUBTFUL": 0.9}
+  },
+  "notify_command": "",
+  "notify_url": ""
+}
