@@ -8,7 +8,7 @@ Python 3 (a Raspberry Pi works well), handles one or several leagues at once, an
   droppable players, using next week's best-lineup projection and rest-of-season strength (byes and injuries
   counted). **Suggestions only:** it never adds, drops, claims or bids.
 - **Optimizes your weekly lineup** (Hungarian assignment over your league's lineup slots, including FLEX / OP /
-  D/ST / K) from ESPN's weekly projections. Players on bye, without a game, or tagged OUT / IR / SUSPENSION never
+  D/ST / K) from ESPN's weekly projections. Players on bye, without a game, or tagged OUT / IR / SUSPENSION / INACTIVE never
   start; DOUBTFUL players are discounted; players whose game has started are never moved.
 - **Writes lineup moves only.** Every write goes through a guard that refuses anything other than a lineup-slot
   move between players already on your own roster: no adds, drops, waiver claims, trades or IR moves.
@@ -31,6 +31,7 @@ pip install -r requirements.txt
 cp config.example.json config.json                     # Windows: Copy-Item config.example.json config.json
 cp .env.example .env                                   # then add your ESPN cookies (and league ids)
 python -m tests.test_guard                             # offline self-test of the write guard
+python -m tests.test_weekly                            # offline self-test of the Sunday notify decision
 python -m ff_companion.discover                        # optional: auto-detect your football teams
 python -m ff_companion.set_lineups                     # preview lineup moves (no writes)
 python -m ff_companion.waivers --no-push               # pickup suggestions (read-only)
@@ -97,25 +98,31 @@ python -m ff_companion.set_lineups plan 12 # preview a future week
 python -m ff_companion.set_lineups run     # WRITES lineup changes to ESPN for the current week
 python -m ff_companion.set_lineups verify  # re-reads lineups and reports anything not optimal
 python -m tests.test_guard                 # proves the write guard blocks non-lineup payloads (no network)
+python -m tests.test_weekly                # proves the Sunday path notifies only on a change or error (no network)
 ```
 
 Weekly automation (any OS):
 
 ```bash
-python -m ff_companion.weekly              # plan: read-only lineup preview (default)
-python -m ff_companion.weekly waivers      # suggestions + notification
-python -m ff_companion.weekly lineups      # LIVE: set lineups, verify, notification
-scripts/weekly.sh [plan|waivers|lineups]   # Linux/macOS wrapper with a run lock
+python -m ff_companion.weekly                # plan: read-only lineup preview (default)
+python -m ff_companion.weekly waivers        # suggestions + notification
+python -m ff_companion.weekly lineups        # LIVE: set lineups, verify, notification
+python -m ff_companion.weekly sunday         # LIVE late-inactive recheck; notifies only if a lineup changed or an error occurred
+python -m ff_companion.weekly sunday-plan    # preview of the Sunday path (no writes, no notification)
+scripts/weekly.sh [plan|waivers|lineups|sunday|sunday-plan]   # Linux/macOS wrapper with a run lock
 ```
 
 A typical schedule: `waivers` the morning before your league's waivers process, `lineups` on Thursday morning
-before the first game, and optionally `lineups` again Sunday morning to react to late inactives.
+before the first game, and `sunday` around 11:00 AM local time to swap out starters who are now OUT, IR or
+inactive (players whose games have already started, such as early London/9:30 AM games, are never moved).
+The Sunday run uses the same lineup-only guard and notifies only if a lineup actually changed or an error
+occurred; it stays silent when nothing changed. `sunday-plan` is a dry-run of that path.
 Logs go to `data/logs/weekly_YYYYMMDD.log` (60 days kept); `data/logs/LAST_STATUS` holds a one-line status:
 `OK`, `WARN`, `FAIL AUTH`, `FAIL GUARD` or `FAIL`.
 
 ## How it values players
 
-- **Lineups:** ESPN's weekly projection in your league's scoring. Zero for byes, no game, OUT / IR / SUSPENSION;
+- **Lineups:** ESPN's weekly projection in your league's scoring. Zero for byes, no game, OUT / IR / SUSPENSION / INACTIVE;
   DOUBTFUL scaled by `doubtful_factor`. Players already in an IR slot are never touched.
 - **Waivers:** rest-of-season points per game (ESPN projection blended with actual), times remaining games,
   discounted for injuries, plus the change in next week's best lineup. A swap is suggested only if it clearly

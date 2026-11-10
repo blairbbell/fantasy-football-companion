@@ -93,6 +93,7 @@ After activation, use `python` for the commands below. You can also skip activat
 directly: `.venv/bin/python` (Linux/macOS) or `.\.venv\Scripts\python.exe` (Windows).
 
 Quick check (no network, no cookies needed): `python -m tests.test_guard` should end with `GUARD TEST: ALL PASS`.
+`python -m tests.test_weekly` should end with `WEEKLY TEST: ALL PASS`.
 
 ## 4. Configure
 
@@ -134,6 +135,7 @@ password: keep them only in `.env` or `espn_cookies.json`, and on Linux/macOS ru
 | Task | Command |
 | --- | --- |
 | Test the write guard (no network, no cookies) | `python -m tests.test_guard` |
+| Test the Sunday notify decision (no network, no cookies) | `python -m tests.test_weekly` |
 | Find your football teams (read-only) | `python -m ff_companion.discover` |
 | Pickup suggestions (read-only) | `python -m ff_companion.waivers --no-push` |
 | Preview lineup moves (no writes) | `python -m ff_companion.set_lineups plan` |
@@ -143,6 +145,8 @@ password: keep them only in `.env` or `espn_cookies.json`, and on Linux/macOS ru
 | Weekly runner, preview (default) | `python -m ff_companion.weekly` |
 | Weekly runner, suggestions + notification | `python -m ff_companion.weekly waivers` |
 | Weekly runner, live lineups + verify + notification | `python -m ff_companion.weekly lineups` |
+| Weekly runner, Sunday late-inactive recheck (notifies only on a change or error) | `python -m ff_companion.weekly sunday` |
+| Weekly runner, Sunday preview (no writes, no notification) | `python -m ff_companion.weekly sunday-plan` |
 | Test your notification hook | `python -m ff_companion.notify "Test" "Hello"` |
 
 Output goes to `data/`: `data/reports/waivers_YYYYMMDD.md`, `data/reports/*_latest.json`,
@@ -154,18 +158,18 @@ Start with `plan` for a week or two and read the output before scheduling `lineu
 
 Pick times in your local time zone. Waivers usually process overnight on Wednesday in ESPN's default settings,
 so Tuesday morning is a good time for suggestions; set lineups Thursday morning before the first game, and
-optionally again Sunday morning for late inactives.
+run the Sunday late-inactive check around 11:00 AM to swap unlocked starters who are now OUT, IR or inactive.
+The Sunday job notifies only if a lineup changed or an error occurred.
 
 **Linux / macOS (cron):** `crontab -e`, then add:
 
 ```
 0 8 * * 2  cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly waivers
 0 8 * * 4  cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly lineups
-# optional Sunday re-check for late inactives:
-0 11 * * 0 cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly lineups
+0 11 * * 0 cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly sunday
 ```
 
-On Linux you can use `scripts/weekly.sh waivers|lineups` instead; it adds a run lock via `flock` when available.
+On Linux you can use `scripts/weekly.sh waivers|lineups|sunday` instead; it adds a run lock via `flock` when available.
 
 **macOS:** cron is simplest. If cron cannot read the folder, give `cron` Full Disk Access in System Settings →
 Privacy & Security, or keep the project outside Documents/Desktop. launchd also works.
@@ -181,6 +185,9 @@ Register-ScheduledTask -TaskName "FantasyFootballWaivers" -Action $a1 -Trigger $
 $a2 = New-ScheduledTaskAction -Execute $py -Argument "-m ff_companion.weekly lineups" -WorkingDirectory $dir
 $t2 = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Thursday -At 8am
 Register-ScheduledTask -TaskName "FantasyFootballLineups" -Action $a2 -Trigger $t2
+$a3 = New-ScheduledTaskAction -Execute $py -Argument "-m ff_companion.weekly sunday" -WorkingDirectory $dir
+$t3 = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 11am
+Register-ScheduledTask -TaskName "FantasyFootballSunday" -Action $a3 -Trigger $t3
 ```
 
 The computer must be on (and not asleep) at those times.
@@ -230,8 +237,9 @@ owns the team.
 The safety guard blocked a non-lineup write; nothing was sent. This is expected protection, not an ESPN error.
 
 **A player wasn't moved**
-Players whose game has started are locked and never moved; players in IR slots are never touched. Lineups can only
-be written for the current scoring week (`plan <week>` is a preview only).
+Players whose game has started are locked and never moved (including early London / 9:30 AM games by a Sunday
+11:00 AM recheck); players in IR slots are never touched. Lineups can only be written for the current scoring
+week (`plan <week>` and `sunday-plan` are previews only).
 
 **Notification didn't arrive**
 Run `python -m ff_companion.notify "Test" "Hello"` and check the printed result (`command rc=...` or `url http=...`).

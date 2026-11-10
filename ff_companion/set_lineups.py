@@ -2,12 +2,12 @@
 Modes:  plan [week]   read-only (default). Builds the exact payload and runs it through the guard without sending.
         run           writes lineup changes for the CURRENT scoring week only.
         verify        re-reads lineups; reports mismatch vs. optimal (unlocked players only).
-Rules: weekly ESPN projections in league scoring; bye / no game / OUT / IR / SUSPENSION players never start;
+Rules: weekly ESPN projections in league scoring; bye / no game / OUT / IR / SUSPENSION / INACTIVE players never start;
 DOUBTFUL scaled by doubtful_factor (default 50%); locked players (game started) are never moved; IR slot never touched;
 no adds/drops. Usage: python -m ff_companion.set_lineups [plan [week]|run|verify]"""
 import json, sys, time
 from datetime import datetime
-from .espn_common import (LOGDIR, REPORTS, SLOTNAME, BENCH, IR, session, league, load_leagues, team_roster, pro_schedule,
+from .espn_common import (LOGDIR, REPORTS, SLOTNAME, BENCH, IR, NO_START, session, league, load_leagues, team_roster, pro_schedule,
                           eff_proj, is_locked, optimize, post_lineup, now_str, log_to, ensure_dirs)
 
 LOG = LOGDIR / f"lineups_{datetime.now():%Y%m%d}.log"
@@ -30,7 +30,7 @@ def plan_team(s, L, week, sched):
     for p in movable:
         if desired[p["id"]] != BENCH and w[p["id"]] == 0:
             warn.append(f"{p['name']} starts with 0 proj (no better option)")
-        if p["id"] in locked and p["slot"] != BENCH and w[p["id"]] == 0 and p["inj"] in ("OUT", "INJURY_RESERVE"):
+        if p["id"] in locked and p["slot"] != BENCH and w[p["id"]] == 0 and p["inj"] in NO_START:
             warn.append(f"{p['name']} locked in lineup but {p['inj']}")
     return {"j": j, "ros": movable, "slots": slots, "w": w, "locked": locked, "desired": desired,
             "total": total, "cur_total": cur_total, "diff": diff, "warn": warn}

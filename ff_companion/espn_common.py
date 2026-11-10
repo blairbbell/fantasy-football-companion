@@ -35,7 +35,7 @@ SLOTNAME = {0: "QB", 1: "TQB", 2: "RB", 3: "RB/WR", 4: "WR", 5: "WR/TE", 6: "TE"
             20: "BE", 21: "IR", 23: "FLEX", 24: "ER", 25: "Rookie"}
 POSNAME = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "D/ST", 7: "P", 9: "DT", 10: "DE", 11: "LB", 12: "CB", 13: "S", 14: "HC"}
 BENCH, IR = 20, 21
-NO_START = {"OUT", "INJURY_RESERVE", "SUSPENSION"}
+NO_START = {"OUT", "INJURY_RESERVE", "SUSPENSION", "INACTIVE"}
 BIG = 10**9
 
 class CookiesExpired(SystemExit):
@@ -157,7 +157,7 @@ def team_roster(s, lid, tid, week):
     return j, [player_row(e, e["lineupSlotId"]) for e in t["roster"]["entries"]]
 
 def eff_proj(p, week, sched):
-    """Projection used for lineup decisions: 0 on bye / no game / OUT-IR-SUSP; DOUBTFUL scaled by doubtful_factor."""
+    """Projection used for lineup decisions: 0 on bye / no game / OUT-IR-SUSP-INACTIVE; DOUBTFUL scaled by doubtful_factor."""
     if not sched.get(p["pro"], {}).get("games", {}).get(week): return 0.0
     if p["inj"] in NO_START: return 0.0
     v = proj_week(p["raw"], week) or 0.0

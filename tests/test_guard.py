@@ -36,6 +36,27 @@ def main():
     ok = {**base, "type": "ROSTER", "items": [L(3, 2, 20), L(2, 20, 2)]}
     print("PASS  valid RB swap accepted (dry):", fc.post_lineup(fs, 1, ok, T, R, slots, set(), dry=True)["body"])
     print(f"POST attempts: {fs.calls}")
+    # eff_proj: OUT/IR/SUSPENSION/INACTIVE never start; DOUBTFUL scaled; no game -> 0 (no network)
+    sched = {1: {"games": {10: [1]}}}
+    def fake(inj, proj=10.0):
+        return {"pro": 1, "inj": inj, "raw": {"stats": [{"statSourceId": 1, "statSplitTypeId": 1,
+                "scoringPeriodId": 10, "seasonId": fc.SEASON, "appliedTotal": proj}]}}
+    proj_ok = True
+    for inj in ("OUT", "INJURY_RESERVE", "SUSPENSION", "INACTIVE"):
+        got = fc.eff_proj(fake(inj), 10, sched)
+        if got != 0.0:
+            print(f"FAIL  eff_proj {inj}: {got}"); fails += 1; proj_ok = False
+    factor = float(fc.CFG.get("doubtful_factor", 0.5))
+    if fc.eff_proj(fake("DOUBTFUL"), 10, sched) != 10.0 * factor:
+        print("FAIL  eff_proj DOUBTFUL"); fails += 1; proj_ok = False
+    if fc.eff_proj(fake("ACTIVE"), 10, sched) != 10.0:
+        print("FAIL  eff_proj ACTIVE"); fails += 1; proj_ok = False
+    if fc.eff_proj(fake("ACTIVE"), 10, {1: {"games": {}}}) != 0.0:
+        print("FAIL  eff_proj no-game"); fails += 1; proj_ok = False
+    if "INACTIVE" not in fc.NO_START:
+        print("FAIL  INACTIVE missing from NO_START"); fails += 1; proj_ok = False
+    if proj_ok:
+        print("PASS  eff_proj injury/inactive/DOUBTFUL/bye handling")
     passed = fails == 0 and fs.calls == 0
     print("GUARD TEST:", "ALL PASS" if passed else "FAILED")
     return passed

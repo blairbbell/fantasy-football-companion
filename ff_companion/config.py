@@ -28,7 +28,7 @@ DEFAULTS = {
         "free_agents_considered": 40,
         "drop_candidates": 7,
         "max_recommendations": 3,
-        "injury_ros_factor": {"OUT": 0.7, "INJURY_RESERVE": 0.4, "SUSPENSION": 0.4, "DOUBTFUL": 0.9},
+        "injury_ros_factor": {"OUT": 0.7, "INJURY_RESERVE": 0.4, "SUSPENSION": 0.4, "INACTIVE": 0.4, "DOUBTFUL": 0.9},
     },
     # Optional notifications (see README "Notifications"). Leave empty to just print/log.
     "notify_command": "",       # command run as: <command> "<title>" "<message>"
