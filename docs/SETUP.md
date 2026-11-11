@@ -136,6 +136,7 @@ password: keep them only in `.env` or `espn_cookies.json`, and on Linux/macOS ru
 | --- | --- |
 | Test the write guard (no network, no cookies) | `python -m tests.test_guard` |
 | Test the Sunday notify decision (no network, no cookies) | `python -m tests.test_weekly` |
+| Test the claim-result logic (no network, no cookies) | `python -m tests.test_claims` |
 | Find your football teams (read-only) | `python -m ff_companion.discover` |
 | Pickup suggestions (read-only) | `python -m ff_companion.waivers --no-push` |
 | Preview lineup moves (no writes) | `python -m ff_companion.set_lineups plan` |
@@ -147,6 +148,8 @@ password: keep them only in `.env` or `espn_cookies.json`, and on Linux/macOS ru
 | Weekly runner, live lineups + verify + notification | `python -m ff_companion.weekly lineups` |
 | Weekly runner, Sunday late-inactive recheck (notifies only on a change or error) | `python -m ff_companion.weekly sunday` |
 | Weekly runner, Sunday preview (no writes, no notification) | `python -m ff_companion.weekly sunday-plan` |
+| Waiver claim results, preview (read-only, no notification) | `python -m ff_companion.weekly claims-plan` |
+| Waiver claim results + notification (read-only, silent if nothing new) | `python -m ff_companion.weekly claims` |
 | Test your notification hook | `python -m ff_companion.notify "Test" "Hello"` |
 
 Output goes to `data/`: `data/reports/waivers_YYYYMMDD.md`, `data/reports/*_latest.json`,
@@ -160,6 +163,8 @@ Pick times in your local time zone. Waivers usually process overnight on Wednesd
 so Tuesday morning is a good time for suggestions; set lineups Thursday morning before the first game, and
 run the Sunday late-inactive check around 11:00 AM to swap unlocked starters who are now OUT, IR or inactive.
 The Sunday job notifies only if a lineup changed or an error occurred.
+Optionally run `claims` once a day after waivers process (for example 9:30 AM) to be told which claims succeeded or failed; it is
+read-only and silent when there is nothing new.
 
 **Linux / macOS (cron):** `crontab -e`, then add:
 
@@ -167,9 +172,10 @@ The Sunday job notifies only if a lineup changed or an error occurred.
 0 8 * * 2  cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly waivers
 0 8 * * 4  cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly lineups
 0 11 * * 0 cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly sunday
+30 9 * * *  cd /path/to/fantasy-football-companion && .venv/bin/python -m ff_companion.weekly claims
 ```
 
-On Linux you can use `scripts/weekly.sh waivers|lineups|sunday` instead; it adds a run lock via `flock` when available.
+On Linux you can use `scripts/weekly.sh waivers|lineups|sunday|claims` instead; it adds a run lock via `flock` when available.
 
 **macOS:** cron is simplest. If cron cannot read the folder, give `cron` Full Disk Access in System Settings →
 Privacy & Security, or keep the project outside Documents/Desktop. launchd also works.

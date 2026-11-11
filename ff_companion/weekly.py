@@ -1,6 +1,6 @@
 """Cross-platform weekly runner (Windows/macOS/Linux), for cron, Task Scheduler or launchd.
 
-Usage: python -m ff_companion.weekly [plan|waivers|lineups|sunday|sunday-plan]
+Usage: python -m ff_companion.weekly [plan|waivers|lineups|sunday|sunday-plan|claims|claims-plan]
   plan         (default) read-only lineup preview: set_lineups plan. No ESPN writes, no notifications.
   waivers      read-only waiver/free-agent suggestions (never adds, drops or claims); sends the summary
                through the optional notification hook. Typical schedule: the day before waivers process.
@@ -11,6 +11,9 @@ Usage: python -m ff_companion.weekly [plan|waivers|lineups|sunday|sunday-plan]
                (game already started) are never moved. Notifies through the optional hook ONLY if a
                lineup changed or an error occurred; stays silent when nothing changed.
   sunday-plan  Preview of the Sunday path: set_lineups plan -> verify. No ESPN writes, no notifications.
+  claims       READ-ONLY waiver claim results: notifies which of your claims succeeded / failed / are pending.
+               Silent when there is nothing new. Run it after your league's waivers process.
+  claims-plan  Same, but print only: no notification and no state written.
 Writes data/logs/weekly_YYYYMMDD.log and a one-line data/logs/LAST_STATUS.
 Exit 0 OK, 1 FAIL/WARN, 2 AUTH (cookies expired), 3 GUARD refused a payload."""
 import json
@@ -26,7 +29,7 @@ from .notify import notify
 LOGDIR = CFG["data_dir"] / "logs"
 REPORTS = CFG["data_dir"] / "reports"
 TITLE = "Fantasy football"
-MODES = ("plan", "waivers", "lineups", "sunday", "sunday-plan")
+MODES = ("plan", "waivers", "lineups", "sunday", "sunday-plan", "claims", "claims-plan")
 
 
 def _load_report(name):
@@ -107,7 +110,7 @@ def main():
     log = LOGDIR / f"weekly_{datetime.now():%Y%m%d}.log"
     status_file = LOGDIR / "LAST_STATUS"
     ts = lambda: datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
-    notify_on_fault = mode not in ("plan", "sunday-plan")
+    notify_on_fault = mode not in ("plan", "sunday-plan", "claims-plan")
 
     def write(msg):
         with log.open("a", encoding="utf-8") as f:
@@ -152,6 +155,10 @@ def main():
         if errors:
             status(f"WARN waivers: {errors} league(s) failed. Log: {log}", 1)
         status("OK waivers", 0)
+    elif mode in ("claims", "claims-plan"):
+        extra = ["--dry-run"] if mode == "claims-plan" else []
+        step("claims", "ff_companion.claims", *extra)
+        status(f"OK {mode}", 0)
     elif mode == "lineups":
         run_out = step("set_lineups run", "ff_companion.set_lineups", "run")
         ver_out = step("set_lineups verify", "ff_companion.set_lineups", "verify")

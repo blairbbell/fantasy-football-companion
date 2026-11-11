@@ -99,6 +99,7 @@ python -m ff_companion.set_lineups run     # WRITES lineup changes to ESPN for t
 python -m ff_companion.set_lineups verify  # re-reads lineups and reports anything not optimal
 python -m tests.test_guard                 # proves the write guard blocks non-lineup payloads (no network)
 python -m tests.test_weekly                # proves the Sunday path notifies only on a change or error (no network)
+python -m tests.test_claims                # offline test of the waiver claim result logic
 ```
 
 Weekly automation (any OS):
@@ -109,7 +110,9 @@ python -m ff_companion.weekly waivers        # suggestions + notification
 python -m ff_companion.weekly lineups        # LIVE: set lineups, verify, notification
 python -m ff_companion.weekly sunday         # LIVE late-inactive recheck; notifies only if a lineup changed or an error occurred
 python -m ff_companion.weekly sunday-plan    # preview of the Sunday path (no writes, no notification)
-scripts/weekly.sh [plan|waivers|lineups|sunday|sunday-plan]   # Linux/macOS wrapper with a run lock
+python -m ff_companion.weekly claims         # READ-ONLY: notify which waiver claims succeeded / failed / are pending (silent if nothing new)
+python -m ff_companion.weekly claims-plan    # same, print only (no notification, nothing remembered)
+scripts/weekly.sh [plan|waivers|lineups|sunday|sunday-plan|claims|claims-plan]   # Linux/macOS wrapper with a run lock
 ```
 
 A typical schedule: `waivers` the morning before your league's waivers process, `lineups` on Thursday morning
@@ -117,6 +120,11 @@ before the first game, and `sunday` around 11:00 AM local time to swap out start
 inactive (players whose games have already started, such as early London/9:30 AM games, are never moved).
 The Sunday run uses the same lineup-only guard and notifies only if a lineup actually changed or an error
 occurred; it stays silent when nothing changed. `sunday-plan` is a dry-run of that path.
+**Claim results:** schedule `claims` once a day after your league's waivers process (for example 9:30 AM local). It reads your
+recent waiver transactions (GET only; it never adds, drops or claims), notifies with a line like
+`OK +Player A/-Player B; FAILED +Player C (roster full)`, remembers what it already reported in
+`data/reports/claims_seen.json`, and stays silent when there are no new claims. `claims.window_hours` (default 30) sets
+how far back it looks.
 Logs go to `data/logs/weekly_YYYYMMDD.log` (60 days kept); `data/logs/LAST_STATUS` holds a one-line status:
 `OK`, `WARN`, `FAIL AUTH`, `FAIL GUARD` or `FAIL`.
 

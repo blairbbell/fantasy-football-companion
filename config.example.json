@@ -13,6 +13,7 @@
     "max_recommendations": 3,
     "injury_ros_factor": {"OUT": 0.7, "INJURY_RESERVE": 0.4, "SUSPENSION": 0.4, "INACTIVE": 0.4, "DOUBTFUL": 0.9}
   },
+  "claims": {"window_hours": 30},
   "notify_command": "",
   "notify_url": ""
 }

@@ -5,10 +5,13 @@
 #   scripts/weekly.sh lineups      -> LIVE lineup moves (guarded: lineup-slot moves only), verify, notification
 #   scripts/weekly.sh sunday       -> LIVE late-inactive recheck; notify only if a lineup changed or an error occurred
 #   scripts/weekly.sh sunday-plan  -> preview of the Sunday path (no writes, no notifications)
+#   scripts/weekly.sh claims       -> READ-ONLY waiver claim results (succeeded/failed); silent if nothing new
+#   scripts/weekly.sh claims-plan  -> same, print only (no notification, no state)
 # Example cron (local time):
 #   0 8 * * 2  /path/to/fantasy-football-companion/scripts/weekly.sh waivers
 #   0 8 * * 4  /path/to/fantasy-football-companion/scripts/weekly.sh lineups
 #   0 11 * * 0 /path/to/fantasy-football-companion/scripts/weekly.sh sunday
+#   30 9 * * * /path/to/fantasy-football-companion/scripts/weekly.sh claims
 set -u
 APP="$(cd "$(dirname "$0")/.." && pwd)"
 PY="${PYTHON:-python3}"; [ -x "$APP/.venv/bin/python" ] && PY="$APP/.venv/bin/python"
