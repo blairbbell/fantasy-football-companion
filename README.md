@@ -100,6 +100,7 @@ python -m ff_companion.set_lineups verify  # re-reads lineups and reports anythi
 python -m tests.test_guard                 # proves the write guard blocks non-lineup payloads (no network)
 python -m tests.test_weekly                # proves the Sunday path notifies only on a change or error (no network)
 python -m tests.test_claims                # offline test of the waiver claim result logic
+python -m tests.test_ir                    # offline test of the bench IR suggestion logic
 ```
 
 Weekly automation (any OS):
@@ -120,6 +121,11 @@ before the first game, and `sunday` around 11:00 AM local time to swap out start
 inactive (players whose games have already started, such as early London/9:30 AM games, are never moved).
 The Sunday run uses the same lineup-only guard and notifies only if a lineup actually changed or an error
 occurred; it stays silent when nothing changed. `sunday-plan` is a dry-run of that path.
+**Bench IR suggestions:** the `waivers` run also checks each roster for a player sitting on the bench who is OUT, on IR, or
+DOUBTFUL (and not in the projected best lineup) when an IR slot is open and ESPN lists IR as eligible for him. The report and
+notification then say e.g. `IR: move Player (rb, out) to open IR slot`, which frees a roster spot. Suggestion only: it never
+moves anyone, you make the move in ESPN. At most as many players as open IR slots are listed, most severe first.
+
 **Claim results:** schedule `claims` once a day after your league's waivers process (for example 9:30 AM local). It reads your
 recent waiver transactions (GET only; it never adds, drops or claims), notifies with a line like
 `OK +Player A/-Player B; FAILED +Player C (roster full)`, remembers what it already reported in

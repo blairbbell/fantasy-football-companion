@@ -41,6 +41,19 @@ def free_agents(s, lid, week, slot_ids):
 def lineup_val(players, slots, weights):
     return optimize([{**p, "slot": BENCH} for p in players], slots, weights)[1]
 
+IR_FLAGS = ("INJURY_RESERVE", "OUT", "DOUBTFUL")   # injury tags worth an IR suggestion, most severe first
+
+def ir_suggestions(roster, ir_open, starters=None):
+    """Bench players who could move to an open IR slot (suggestion only; nothing is ever sent to ESPN).
+    Needs: on the bench, an IR-flag injury tag, and ESPN lists IR (slot 21) as eligible for him. A DOUBTFUL player
+    is only suggested when he is not in the projected best lineup. Most severe first, at most ir_open entries."""
+    if ir_open <= 0: return []
+    starters = starters or {}
+    c = [p for p in roster if p.get("slot") == BENCH and p["inj"] in IR_FLAGS and IR in (p.get("elig") or [])
+         and not (p["inj"] == "DOUBTFUL" and starters.get(p["id"]) not in (None, BENCH))]
+    c.sort(key=lambda p: (IR_FLAGS.index(p["inj"]), p["ros"]))
+    return c[:ir_open]
+
 def analyse(s, L, week, final, sched):
     j, ros = team_roster(s, L["leagueId"], L["teamId"], week)
     slots = j["settings"]["rosterSettings"]["lineupSlotCounts"]
@@ -84,13 +97,11 @@ def analyse(s, L, week, final, sched):
         if len(recs) >= N_REC: break
     notes = []
     ir_cap = slots.get(str(IR), 0) - len(ir_slot)
-    for p in roster:
-        if p["inj"] in ("OUT", "INJURY_RESERVE") and ir_cap > 0:
-            notes.append(f"{p['name']} is {p['inj']} - could go to an IR slot to open a roster spot ({ir_cap} open)")
+    starters_next = optimize([{**p, "slot": BENCH} for p in roster], slots, wn(roster))[0]
+    ir_moves = [{"name": p["name"], "pos": p["pos"], "inj": p["inj"]} for p in ir_suggestions(roster, ir_cap, starters_next)]
     for p in ir_slot:
         if p["inj"] in ("ACTIVE", "QUESTIONABLE"):
             notes.append(f"{p['name']} is in IR but now {p['inj']} - ESPN may block moves until he leaves IR")
-    starters_next = optimize([{**p, "slot": BENCH} for p in roster], slots, wn(roster))[0]
     for sl, c in act.items():
         n = sum(1 for p in roster if starters_next.get(p["id"]) == sl and p["next"] > 0)
         if n < c: notes.append(f"week {week}: only {n}/{c} {SLOTNAME.get(sl, sl)} slot(s) can be filled with a player who has a game")
@@ -98,7 +109,7 @@ def analyse(s, L, week, final, sched):
             "acq": acq.get("acquisitionType"), "faab": acq.get("isUsingAcquisitionBudget"),
             "budget_left": (acq.get("acquisitionBudget") or 0) - ((team.get("transactionCounter") or {}).get("acquisitionBudgetSpent") or 0),
             "waiverDays": acq.get("waiverProcessDays"), "waiverHour": acq.get("waiverProcessHour"),
-            "base_next": base_next, "recs": recs, "notes": notes, "ir_open": ir_cap}
+            "base_next": base_next, "recs": recs, "notes": notes, "ir_open": ir_cap, "ir_moves": ir_moves}
 
 def fmt_player(p):
     tag = "W" if p.get("status") == "WAIVERS" else ("FA" if p.get("status") == "FREEAGENT" else "")
@@ -144,8 +155,11 @@ def main():
                 md[-1] += " | or move him to an open IR slot instead of dropping"
             lines.append(f"+{a['name']} ({a['pos']}{', waivers' if a.get('status')=='WAIVERS' else ''}) for -{d['name']}: {c['dn']:+.1f} wk{r['week']}, {c['dr']:+.1f}/wk ROS")
         if not r["recs"]: md.append("- No add/drop clearly improves this team this week."); lines.append("No clear upgrades on the wire.")
+        irl = [f"{m['name']} ({m['pos']}, {m['inj'].replace('INJURY_RESERVE','IR').lower()})" for m in r.get("ir_moves", [])]
+        for m in irl: md.append(f"- IR SUGGESTION: move {m} from the bench to an open IR slot ({r['ir_open']} open) - frees a roster spot; do it in ESPN yourself")
         for n in r["notes"]: md.append(f"- note: {n}")
         pushes.append((r["league"], f"{r['team']} wk{r['week']} (waiver #{r['waiverRank']}): " + "; ".join(lines)
+                       + (f" | IR: move {', '.join(irl)} to open IR slot" if irl else "")
                        + (f" | {r['notes'][0]}" if r["notes"] else "")))
         md.append("")
     path = REPORTS / f"waivers_{datetime.now():%Y%m%d}.md"

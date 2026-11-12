@@ -4,7 +4,7 @@ Fantasy Football Companion is a set of **command-line tools**. It has **no web U
 runs no local server**. It only makes outbound HTTPS requests to ESPN's (undocumented, unofficial) fantasy API and,
 if you configure one, to your notification hook. The parts are:
 
-- **Read-only:** `discover` (find your teams), `waivers` (pickup suggestions; never adds/drops/claims),
+- **Read-only:** `discover` (find your teams), `waivers` (pickup suggestions plus bench-IR suggestions; never adds/drops/claims/IR moves),
   `set_lineups plan` / `verify`.
 - **Lineup writes:** `set_lineups run` and `weekly lineups`, which apply lineup-slot moves only, through a safety guard.
 
