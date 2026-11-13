@@ -101,6 +101,7 @@ python -m tests.test_guard                 # proves the write guard blocks non-l
 python -m tests.test_weekly                # proves the Sunday path notifies only on a change or error (no network)
 python -m tests.test_claims                # offline test of the waiver claim result logic
 python -m tests.test_ir                    # offline test of the bench IR suggestion logic
+python -m tests.test_bye                   # offline test of the bye-week heads-up logic
 ```
 
 Weekly automation (any OS):
@@ -125,6 +126,11 @@ occurred; it stays silent when nothing changed. `sunday-plan` is a dry-run of th
 DOUBTFUL (and not in the projected best lineup) when an IR slot is open and ESPN lists IR as eligible for him. The report and
 notification then say e.g. `IR: move Player (rb, out) to open IR slot`, which frees a roster spot. Suggestion only: it never
 moves anyone, you make the move in ESPN. At most as many players as open IR slots are listed, most severe first.
+
+**Bye-week heads-up:** the `waivers` run also lists, for each team, next week's byes among your current starters and any
+starting spots the projected best lineup cannot fill with a player who has a game. It shows up as a `BYE HEADS-UP` line in the
+report and a `Bye: ...` part of the notification, and only when there is something to flag. Information only: it never
+changes your lineup or makes any transaction.
 
 **Claim results:** schedule `claims` once a day after your league's waivers process (for example 9:30 AM local). It reads your
 recent waiver transactions (GET only; it never adds, drops or claims), notifies with a line like

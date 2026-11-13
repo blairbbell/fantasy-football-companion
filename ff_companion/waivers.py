@@ -54,6 +54,26 @@ def ir_suggestions(roster, ir_open, starters=None):
     c.sort(key=lambda p: (IR_FLAGS.index(p["inj"]), p["ros"]))
     return c[:ir_open]
 
+def bye_headsup(roster, act, starters_next, week, sched):
+    """Info only. Players currently in a starting slot whose team is on bye in `week`, plus starting spots that the
+    projected best lineup cannot fill with a player who has a game. Never changes anything."""
+    byes = [{"name": p["name"], "pos": p["pos"]} for p in roster
+            if p.get("slot") in act and not sched.get(p["pro"], {}).get("games", {}).get(week)
+            and sched.get(p["pro"], {}).get("bye") == week]
+    open_spots = []
+    for sl, c in sorted(act.items()):
+        n = sum(1 for p in roster if starters_next.get(p["id"]) == sl and p["next"] > 0)
+        if n < c: open_spots.append(f"{c - n} {SLOTNAME.get(sl, sl)}")
+    return {"byes": byes, "open": open_spots}
+
+def bye_text(b, week):
+    """One-line text for the report/notification, or '' when there is nothing to flag."""
+    if not b or not (b["byes"] or b["open"]): return ""
+    parts = []
+    if b["byes"]: parts.append("byes among starters: " + ", ".join(f"{x['name']} ({x['pos']})" for x in b["byes"]))
+    if b["open"]: parts.append("open starting spots: " + ", ".join(b["open"]))
+    return f"wk{week} " + "; ".join(parts)
+
 def analyse(s, L, week, final, sched):
     j, ros = team_roster(s, L["leagueId"], L["teamId"], week)
     slots = j["settings"]["rosterSettings"]["lineupSlotCounts"]
@@ -105,7 +125,8 @@ def analyse(s, L, week, final, sched):
     for sl, c in act.items():
         n = sum(1 for p in roster if starters_next.get(p["id"]) == sl and p["next"] > 0)
         if n < c: notes.append(f"week {week}: only {n}/{c} {SLOTNAME.get(sl, sl)} slot(s) can be filled with a player who has a game")
-    return {"league": L["league"], "team": L["team"], "week": week, "waiverRank": team.get("waiverRank"),
+    bye = bye_headsup(roster, act, starters_next, week, sched)
+    return {"league": L["league"], "team": L["team"], "week": week, "bye": bye, "waiverRank": team.get("waiverRank"),
             "acq": acq.get("acquisitionType"), "faab": acq.get("isUsingAcquisitionBudget"),
             "budget_left": (acq.get("acquisitionBudget") or 0) - ((team.get("transactionCounter") or {}).get("acquisitionBudgetSpent") or 0),
             "waiverDays": acq.get("waiverProcessDays"), "waiverHour": acq.get("waiverProcessHour"),
@@ -157,9 +178,12 @@ def main():
         if not r["recs"]: md.append("- No add/drop clearly improves this team this week."); lines.append("No clear upgrades on the wire.")
         irl = [f"{m['name']} ({m['pos']}, {m['inj'].replace('INJURY_RESERVE','IR').lower()})" for m in r.get("ir_moves", [])]
         for m in irl: md.append(f"- IR SUGGESTION: move {m} from the bench to an open IR slot ({r['ir_open']} open) - frees a roster spot; do it in ESPN yourself")
+        byet = bye_text(r.get("bye"), r["week"])
+        if byet: md.append(f"- BYE HEADS-UP: {byet} (info only; set your lineup in ESPN)")
         for n in r["notes"]: md.append(f"- note: {n}")
         pushes.append((r["league"], f"{r['team']} wk{r['week']} (waiver #{r['waiverRank']}): " + "; ".join(lines)
                        + (f" | IR: move {', '.join(irl)} to open IR slot" if irl else "")
+                       + (f" | Bye: {byet}" if byet else "")
                        + (f" | {r['notes'][0]}" if r["notes"] else "")))
         md.append("")
     path = REPORTS / f"waivers_{datetime.now():%Y%m%d}.md"
