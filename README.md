@@ -102,6 +102,7 @@ python -m tests.test_weekly                # proves the Sunday path notifies onl
 python -m tests.test_claims                # offline test of the waiver claim result logic
 python -m tests.test_ir                    # offline test of the bench IR suggestion logic
 python -m tests.test_bye                   # offline test of the bye-week heads-up logic
+python -m tests.test_cookie_watch          # offline test of the cookie expiry / auth-failure notification logic
 ```
 
 Weekly automation (any OS):
@@ -137,6 +138,13 @@ recent waiver transactions (GET only; it never adds, drops or claims), notifies 
 `OK +Player A/-Player B; FAILED +Player C (roster full)`, remembers what it already reported in
 `data/reports/claims_seen.json`, and stays silent when there are no new claims. `claims.window_hours` (default 30) sets
 how far back it looks.
+**Cookie expiry warning:** the `claims` run also checks the `espn_s2_expires` timestamp in your cookies file (epoch seconds; it
+reads only that field, never the cookie values) and, starting `cookie_watch.warn_days` (default 21) before expiry, notifies at
+most once every `cookie_watch.repeat_days` (default 7). If any run gets an ESPN 401/403, you are notified once per failure
+streak; the next successful `claims` run ends the streak. State is kept in `data/reports/cookie_watch_state.json`.
+`python -m ff_companion.cookie_watch check|authfail|ok --dry-run` prints only. Needs a notification hook to reach you;
+otherwise it is just printed and logged. No ESPN writes.
+
 Logs go to `data/logs/weekly_YYYYMMDD.log` (60 days kept); `data/logs/LAST_STATUS` holds a one-line status:
 `OK`, `WARN`, `FAIL AUTH`, `FAIL GUARD` or `FAIL`.
 

@@ -137,6 +137,7 @@ password: keep them only in `.env` or `espn_cookies.json`, and on Linux/macOS ru
 | Test the write guard (no network, no cookies) | `python -m tests.test_guard` |
 | Test the Sunday notify decision (no network, no cookies) | `python -m tests.test_weekly` |
 | Test the claim-result logic (no network, no cookies) | `python -m tests.test_claims` |
+| Test the cookie expiry / auth-failure notifications (no network, no cookies) | `python -m tests.test_cookie_watch` |
 | Find your football teams (read-only) | `python -m ff_companion.discover` |
 | Pickup suggestions (read-only) | `python -m ff_companion.waivers --no-push` |
 | Preview lineup moves (no writes) | `python -m ff_companion.set_lineups plan` |
@@ -165,6 +166,10 @@ run the Sunday late-inactive check around 11:00 AM to swap unlocked starters who
 The Sunday job notifies only if a lineup changed or an error occurred.
 Optionally run `claims` once a day after waivers process (for example 9:30 AM) to be told which claims succeeded or failed; it is
 read-only and silent when there is nothing new.
+The same daily `claims` run also warns you about 21 days before your ESPN cookies expire (set `espn_s2_expires` in
+`espn_cookies.json` to the cookie's expiry as epoch seconds; 0 or missing disables the warning) and tells you once if ESPN
+rejects the cookies (401/403). It needs a notification hook (`notify_command` or `notify_url`) to reach you. Tune with
+`"cookie_watch": {"warn_days": 21, "repeat_days": 7}` in `config.json`.
 
 **Linux / macOS (cron):** `crontab -e`, then add:
 

@@ -14,6 +14,8 @@ Usage: python -m ff_companion.weekly [plan|waivers|lineups|sunday|sunday-plan|cl
   claims       READ-ONLY waiver claim results: notifies which of your claims succeeded / failed / are pending.
                Silent when there is nothing new. Run it after your league's waivers process.
   claims-plan  Same, but print only: no notification and no state written.
+  (claims also runs the cookie expiry check: warns ~21 days before the ESPN cookies expire, once a week.
+   An ESPN 401/403 in any mode notifies once per failure streak; see ff_companion/cookie_watch.py.)
 Writes data/logs/weekly_YYYYMMDD.log and a one-line data/logs/LAST_STATUS.
 Exit 0 OK, 1 FAIL/WARN, 2 AUTH (cookies expired), 3 GUARD refused a payload."""
 import json
@@ -25,6 +27,7 @@ from datetime import datetime
 
 from .config import CFG, ROOT
 from .notify import notify
+from . import cookie_watch
 
 LOGDIR = CFG["data_dir"] / "logs"
 REPORTS = CFG["data_dir"] / "reports"
@@ -120,7 +123,9 @@ def main():
         status_file.write_text(f"{ts()} {msg}\n", encoding="utf-8")
         write(f"{ts()} STATUS: {msg}")
         print(msg)
-        if push:
+        if push and code == 2:  # auth failure: notify once per failure streak
+            cookie_watch.authfail()
+        elif push:
             write(f"notify: {notify(TITLE, msg[:900])}")
         sys.exit(code)
 
@@ -158,6 +163,9 @@ def main():
     elif mode in ("claims", "claims-plan"):
         extra = ["--dry-run"] if mode == "claims-plan" else []
         step("claims", "ff_companion.claims", *extra)
+        if mode == "claims":
+            cookie_watch.ok()
+            cookie_watch.check()
         status(f"OK {mode}", 0)
     elif mode == "lineups":
         run_out = step("set_lineups run", "ff_companion.set_lineups", "run")

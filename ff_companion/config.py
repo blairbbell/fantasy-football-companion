@@ -30,6 +30,7 @@ DEFAULTS = {
         "max_recommendations": 3,
         "injury_ros_factor": {"OUT": 0.7, "INJURY_RESERVE": 0.4, "SUSPENSION": 0.4, "INACTIVE": 0.4, "DOUBTFUL": 0.9},
     },
+    "cookie_watch": {"warn_days": 21, "repeat_days": 7},  # cookie expiry warning window / re-warn interval
     # Optional notifications (see README "Notifications"). Leave empty to just print/log.
     "notify_command": "",       # command run as: <command> "<title>" "<message>"
     "notify_url": "",           # URL that accepts a plain-text POST (e.g. a self-hosted ntfy topic)
